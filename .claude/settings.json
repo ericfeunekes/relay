@@ -1,6 +1,5 @@
 {
   "enabledPlugins": {
-    "software-development@ai-marketplace-plugins": true,
-    "dev-planning@ai-marketplace-plugins": true
+    "software-development@ai-marketplace-plugins": true
   }
 }
