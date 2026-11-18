@@ -1,0 +1,4 @@
+interface:
+  display_name: "Agent Mail Orchestration"
+  short_description: "Coordinate agents with local boards and checklists"
+  default_prompt: "Use $agent-mail-orchestration to coordinate this outcome through a shared local SQLite record."

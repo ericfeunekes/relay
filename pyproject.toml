@@ -1,0 +1,15 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agent-mail"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = ["mcp==2.3.0"]
+
+[tool.setuptools.packages.find]
+include = ["agent_mail*"]
+
+[tool.setuptools.package-data]
+agent_mail = ["guidance/*.md"]

@@ -1,7 +1,7 @@
 [plugins."software-development@ai-marketplace-plugins"]
 enabled = true
 
-[plugins."dev-planning@ai-marketplace-plugins"]
+[plugins."agent-instructions@ai-marketplace-plugins"]
 enabled = true
 
 [plugins."codex-security@openai-curated-remote"]
@@ -9,3 +9,6 @@ enabled = true
 
 [plugins."code-review@openai-bundled"]
 enabled = false
+
+[mcp_servers.agent_mail_hosted_proof]
+url = "https://agent-mail-personal.travel-event-monitor.workers.dev/mcp"

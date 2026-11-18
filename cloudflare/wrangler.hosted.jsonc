@@ -1,0 +1,18 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "agent-mail-personal",
+  "account_id": "f44684a191d3b7071c78b15913e46dc2",
+  "main": "src/hosted.ts",
+  "compatibility_date": "2026-11-17",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "preview_urls": false,
+  "vars": {
+    "CF_ACCESS_TEAM_DOMAIN": "https://feunekes.cloudflareaccess.com",
+    "CF_ACCESS_AUD": "88e4376792aafa3f4c244049cc3889629c2cbb1c347a0f3dd1f277223237931a"
+  },
+  "durable_objects": {
+    "bindings": [{ "name": "STORE", "class_name": "ProjectStore" }]
+  },
+  "migrations": [{ "tag": "v1", "new_sqlite_classes": ["ProjectStore"] }]
+}

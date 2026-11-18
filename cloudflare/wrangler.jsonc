@@ -1,0 +1,24 @@
+{
+  "name": "agent-mail-local",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-11-17",
+  "compatibility_flags": [
+    "nodejs_compat"
+  ],
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "STORE",
+        "class_name": "ProjectStore"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": [
+        "ProjectStore"
+      ]
+    }
+  ]
+}

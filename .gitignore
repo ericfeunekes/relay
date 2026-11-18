@@ -2,3 +2,7 @@
 .scratch/
 .agents/skills/development-source/
 __pycache__/
+.venv/
+build/
+*.egg-info/
+dist/

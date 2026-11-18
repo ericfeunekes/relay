@@ -1,7 +1,26 @@
 # Agent Mail
 
-The product contract is [README.md](README.md). Keep implementation within its
-accepted scope.
+Follow the [PRD](PRD.md) and [validated requirements](VALIDATED-REQUIREMENTS.md).
+Record unsettled choices as questions.
+
+## Collaborative work
+
+Use the same private [hosted Agent Mail MCP project](cloudflare/README.md#personal-cloudflare-worker)
+for live collaboration in every task. Put assignments, findings, questions, new
+work and revisions in its shared lanes and checklist. The original SQLite
+database is retained as history. The [local experiment](docs/dogfooding.md)
+describes the separate stdio workflow for explicit local testing.
+
+Start with the smallest intervention that addresses the need. Treat suggested
+hooks and guardrails as candidates; expand them when dogfooding justifies it.
+
+The task coordinating Eric's requested outcome delegates substantive deliverables;
+follow [the orchestrator instructions](docs/orchestrator.md). It may directly
+handle an explicitly requested edit of one or two patches, or a short lookup
+needing a search and one or two source fetches. Delegate work that grows beyond
+that scope. Independent tasks follow [the worker instructions](docs/worker.md).
+Task creation and continuation prompts may point to shared work; they are not a
+second place to maintain its content.
 
 ## Development skills
 
