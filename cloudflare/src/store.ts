@@ -1,5 +1,6 @@
 import { DurableObject } from 'cloudflare:workers';
 import { PlanStore } from './plans';
+import { ChannelStore } from './channels';
 import type { Arguments, Env } from './contracts';
 
 type Row = Record<string, SqlStorageValue>;
@@ -22,6 +23,7 @@ const planKinds = ['create_plan','edit_plan','comment_plan','accept_plan','close
 export class ProjectStore extends DurableObject<Env> {
   private sql: SqlStorage;
   private plans: PlanStore;
+  private channels: ChannelStore;
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -58,6 +60,7 @@ export class ProjectStore extends DurableObject<Env> {
         created_at TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%fZ','now'))
       )`);
     });
+    this.channels = new ChannelStore(this.sql);
     this.plans = new PlanStore({
       storage: ctx.storage,
       lane: id => this.lane(id) as Row & { id: number },
@@ -84,6 +87,13 @@ export class ProjectStore extends DurableObject<Env> {
   private event(lane: number | null, actor: string, kind: string, entity: number, detail: unknown = null): void {
     this.sql.exec('INSERT INTO events(lane,actor,kind,entity_id,detail) VALUES(?,?,?,?,?)', lane, actor, kind, entity, detail === null ? null : JSON.stringify(detail));
   }
+  private appendPost(lane: number, actor: string, body: string, reply: number | null = null): Row & { id: number } {
+    this.lane(lane);
+    this.sql.exec('INSERT INTO posts(lane,actor,body,reply_to) VALUES(?,?,?,?)', lane, actor, requiredText(body, 'body'), reply);
+    const id = this.inserted();
+    this.event(lane, actor, 'post', id);
+    return this.rows('SELECT * FROM posts WHERE id=?', id)[0] as Row & { id: number };
+  }
   private addTask(lane: number, title: string, actor: string): { id: number } {
     this.lane(lane);
     this.sql.exec('INSERT INTO tasks(lane,title,created_by) VALUES(?,?,?)', lane, requiredText(title, 'title'), actor);
@@ -97,7 +107,7 @@ export class ProjectStore extends DurableObject<Env> {
     return task;
   }
   private taskView(task: Row): Record<string, unknown> {
-    return { ...task, sources: this.plans.sources(Number(task.id)) };
+    return { ...task, sources: this.plans.sources(Number(task.id)), source_post: this.channels.taskSource(Number(task.id)) };
   }
   private cursor(after: unknown): { after: number; cursor: number } {
     const position = after === undefined ? 0 : after;
@@ -153,6 +163,8 @@ export class ProjectStore extends DurableObject<Env> {
     return this.ctx.storage.transactionSync(() => this.run(operation, args));
   }
   private run(operation: string, args: Arguments): unknown {
+    const channelResult = this.channels.execute(operation, args);
+    if (channelResult !== undefined) return channelResult;
     if (operation === 'list_projects') return this.rows('SELECT * FROM projects ORDER BY id');
     if (operation === 'list_lanes') {
       const project = positive(args.project, 'project'); this.project(project);
@@ -161,10 +173,22 @@ export class ProjectStore extends DurableObject<Env> {
     if (operation === 'read_changes') return this.readChanges(args);
     if (operation === 'read_lane') {
       const lane = positive(args.lane, 'lane'); const details = this.lane(lane);
-      const { after, cursor } = this.cursor(args.after);
-      return { ...details, cursor,
-        events: this.rows('SELECT * FROM events WHERE lane=? AND id>? AND id<=? ORDER BY id', lane, after, cursor),
-        posts: this.rows("SELECT * FROM posts WHERE lane=? AND id IN (SELECT entity_id FROM events WHERE kind='post' AND id>? AND id<=?) ORDER BY id", lane, after, cursor),
+      const { after, cursor: latestCursor } = this.cursor(args.after);
+      const count = Math.min(100, positive(args.limit ?? 50, 'limit'));
+      const forward = after > 0 && args.before === undefined;
+      const selectedEvents = args.before !== undefined ? [] : forward
+        ? this.rows('SELECT * FROM events WHERE lane=? AND id>? ORDER BY id LIMIT ?', lane, after, count + 1)
+        : this.rows('SELECT * FROM events WHERE lane=? ORDER BY id DESC LIMIT ?', lane, count).reverse();
+      const hasMoreEvents = forward && selectedEvents.length > count;
+      const cutoff = hasMoreEvents ? Number(selectedEvents[count - 1].id) : latestCursor;
+      const page = this.channels.page(args, cutoff);
+      const cursor = page.cursor;
+      const understanding = this.channels.understandingHint(lane);
+      return { ...(understanding ? { shared_understanding: understanding } : {}), ...details,
+        events: selectedEvents.slice(0, count),
+        ...page,
+        has_more: page.has_more || hasMoreEvents,
+        next_after: hasMoreEvents ? cursor : page.next_after,
         tasks: this.rows('SELECT * FROM tasks WHERE lane=? ORDER BY id', lane).map(task => this.taskView(task)),
         plans: this.plans.execute('list_plans', { lane }),
         orchestration: this.rows('SELECT * FROM orchestration WHERE lane=?', lane)[0] ?? null,
@@ -190,12 +214,12 @@ export class ProjectStore extends DurableObject<Env> {
       const lane = positive(args.lane, 'lane'); this.lane(lane);
       const reply = args.reply_to == null ? null : positive(args.reply_to, 'reply_to');
       if (reply !== null && !this.rows('SELECT id FROM posts WHERE id=? AND lane=?', reply, lane).length) throw new Error('reply must reference a post on the same lane');
-      this.sql.exec('INSERT INTO posts(lane,actor,body,reply_to) VALUES(?,?,?,?)', lane, actor, requiredText(args.body, 'body'), reply);
-      const id = this.inserted(); this.event(lane, actor, operation, id);
-      return this.rows('SELECT * FROM posts WHERE id=?', id)[0];
+      const post = this.appendPost(lane, actor, requiredText(args.body, 'body'), reply);
+      return post;
     }
     if (operation === 'add_task') {
       const result = this.addTask(positive(args.lane, 'lane'), requiredText(args.title, 'title'), actor);
+      this.channels.addSource(result.id, args.source_post, positive(args.lane, 'lane'));
       return this.taskView(this.task(result.id));
     }
     if (TASK_OPERATIONS.includes(operation)) {

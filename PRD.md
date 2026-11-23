@@ -1,6 +1,7 @@
 # Agent Mail product requirements
 
-This document describes the goals, scope and requirements for Eric's Agent Mail service.
+This PRD holds requirements awaiting validation. See
+[Validated requirements](VALIDATED-REQUIREMENTS.md) for behavior already verified.
 
 ## Goals
 
@@ -21,7 +22,8 @@ the contributions and evidence without relaying messages between tasks.
 
 ## Overview
 
-A project groups channels and has an identity independent of any local folder.
+A project groups channels, called *lanes* in the existing tools and validated
+requirements. A project has an identity independent of any local folder.
 Repository or folder references can provide optional context. Through MCP,
 ChatGPT, Codex and Claude participants can find and contribute to the same
 project without access to a shared filesystem.
@@ -53,16 +55,7 @@ context between checks without keeping workers active between them.
 When Eric returns, he can see what changed, what is still running, and which
 choices need him, with the supporting discussion and evidence available.
 
-Eric can collect selected activity from his connected accounts in an Events
-channel. These posts link to their source so he or an agent can inspect what
-happened, discuss it, or decide on a follow-up.
-
 ## Requirements
-
-Keep requirements here until validated. After validation, move the requirement and
-its acceptance examples to [Validated requirements](VALIDATED-REQUIREMENTS.md).
-Split validated requirements into a folder by capability when the file gets too large.
-The existing tools and validated requirements use *lane* for a channel.
 
 ### Finding and sharing work
 
@@ -70,29 +63,56 @@ The existing tools and validated requirements use *lane* for a channel.
   and checklist available when the work calls for them.
   - Eric records how he felt during a week of weight tracking in a dated post.
     Weeks later he can find the observation in a channel used only for posts.
-  - An agent posts feedback from a review and explains why it set an approach
-    aside. A fresh agent finds the post and its replies after the original chat
-    is archived. If a follow-up is agreed, participants can track it in the same
-    channel's checklist and still read the original discussion.
+  - Eric posts feedback from a review and explains why he set an approach
+    aside. While working on his own, he adds a follow-up to the channel's
+    checklist and records its completion there.
 
-### Events
+- **R1.7** Channel reads are paginated by default. Catch-up returns pages of
+  original posts and replies after each reader's saved position in the channel.
+  - A first visit to a busy channel shows a page of recent posts and replies
+    with their text and reply context. One request gets the next page of older
+    entries. After reading the recent page, the reader can catch up on entries
+    that arrive after it.
+  - A Codex thread reads the oldest unread entries first, including a new reply
+    to a previously read post. It reads one page and stops. It resumes at the
+    next unread entry even if more arrive. Eric and other threads keep their own
+    read positions for that channel.
+  - If a catch-up page fails to arrive, the reader still gets those entries on
+    retry. Browsing earlier pages preserves the saved catch-up position.
 
-- **R5.1** Eric can route activity from his connected sources using a single
-  webhook URL and the same channel matching rules for webhooks and polling.
-  - Two webhook watches for different channels use the same Agent Mail URL.
-    Each matching delivery posts to the destination in its saved rule. An
-    unmatched item or a delivery from an unverified source produces no post.
-  - A comment directly mentioning Eric in a selected GitHub repository matches
-    the same rule and destination when delivered by webhook or found by polling.
-    A retry, a later poll for the same comment, or a second matching rule for
-    that channel still leaves one post there.
+- **R1.8** Eric and his agents can search a project's posts and replies and link
+  to an exact entry.
+  - A fresh agent searches a tax research project and finds the dated reply
+    explaining why an approach was set aside. It can open the reply in its
+    channel discussion after the original chat is archived.
+  - Eric links a checklist item to the post that prompted it. Participants can
+    follow the link to the original entry in context after new posts arrive.
 
-- **R5.2** Eric can tell what triggered an event post and open the original.
-  - A message with the *Engagement follow-up* Gmail label appears in Events
-    with its source, the matching label, and a link to the original. Editing the
-    rule later preserves the reason recorded on that post.
-  - A matching item appears as a channel post. Eric or an agent can reply to it
-    or decide to add a checklist item for the follow-up.
+- **R1.9** Agent Mail suggests closely related links when someone posts and
+  flags possible overlap when a channel is created. Suggestions use existing
+  project text and links and incur no model or embedding charges.
+  - Eric creates a channel on a topic an existing channel covers. Agent Mail
+    shows the overlap and suggests reusing the existing channel or considering
+    a merge. Eric can dismiss the suggestion and use both channels.
+  - A post about an export fix surfaces a related project discussion and a
+    GitHub pull request already linked there. The author chooses whether to
+    include either link. A post with no close match gets no suggestions.
+
+- **R1.10** Contributors can maintain one shared Current understanding document
+  per project, with a covered-through discussion checkpoint for each channel
+  they have accounted for. They choose its content and when to revise it.
+  - A fresh agent opening a channel discovers the document, reads it and starts
+    catch-up after that channel's checkpoint. A later reply to an old post is
+    still returned. Reading the document leaves the reader's saved position
+    unchanged until it explicitly acknowledges its chosen catch-up position.
+  - An agent requesting older discussion receives those messages alongside the
+    document's coverage. It notices an omission and corrects the shared text.
+    Concurrent edits from one revision produce a visible conflict so the next
+    save can preserve both contributors' work.
+  - A feature request arrives in a chat and is brought into the relevant channel
+    as a post or reply. Another contributor finds it, discusses it and updates
+    the shared understanding when useful. Accepted work links its checklist
+    item to that discussion.
 
 ## Constraints
 

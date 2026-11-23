@@ -33,7 +33,7 @@ test('HTTP/MCP transport boundary', { timeout: 240000 }, async t => {
     for (const name of ['list_projects', 'read_lane', 'add_task', 'claim_task', 'review_task', 'claim_orchestrator',
       'read_changes', 'wait_changes', 'list_plans', 'create_plan', 'accept_plan', 'close_plan', 'get_guidance']) assert.ok(names.includes(name), name);
     assert.deepEqual(tools.filter(tool => tool.annotations?.readOnlyHint === true).map(tool => tool.name).sort(),
-      ['get_guidance', 'get_plan', 'list_lanes', 'list_plans', 'list_projects', 'read_changes', 'read_lane', 'wait_changes']);
+      ['catch_up', 'get_guidance', 'get_plan', 'get_post', 'get_project_understanding', 'list_lanes', 'list_plans', 'list_projects', 'read_changes', 'read_lane', 'search_posts', 'suggest_related', 'wait_changes']);
     const uris = (await client.listResources()).resources.map(resource => resource.uri).sort();
     assert.deepEqual(uris, ['agent-mail://guidance/continuity', 'agent-mail://guidance/roles', 'agent-mail://guidance/start']);
     for (const uri of uris) {
