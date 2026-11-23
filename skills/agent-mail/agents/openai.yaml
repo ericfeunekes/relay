@@ -1,0 +1,6 @@
+interface:
+  display_name: "Relay (legacy command)"
+  short_description: "Compatibility command for existing installs"
+  default_prompt: "Use $agent-mail for this work."
+policy:
+  allow_implicit_invocation: false

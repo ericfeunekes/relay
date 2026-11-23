@@ -110,7 +110,7 @@ export class ChannelStore {
       .map(({ row, common }) => channels
         ? { lane: row.id, name: row.body, matching_terms: common, choices: ['reuse', 'consider merge', 'dismiss'] }
         : { post: this.view(row), matching_terms: common,
-          links: [...new Set(String(row.body).match(/(?:https?:\/\/|agent-mail:\/\/)[^\s<>\)\]]+/g) ?? [])] });
+          links: [...new Set(String(row.body).match(/(?:https?:\/\/|(?:agent-mail|relay):\/\/)[^\s<>\)\]]+/g) ?? [])] });
   }
   execute(operation: string, args: Arguments): unknown {
     if (operation === 'get_project_understanding' || operation === 'save_project_understanding') {

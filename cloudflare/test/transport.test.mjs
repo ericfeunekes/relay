@@ -28,24 +28,43 @@ test('HTTP/MCP transport boundary', { timeout: 240000 }, async t => {
 
   await t.test('tools and guidance resources are discoverable and readable', async () => {
     const client = await runtime.connect('discoverer');
+    assert.equal(client.getServerVersion().name, 'Agent Mail');
     const tools = (await client.listTools()).tools;
-    const names = tools.map(tool => tool.name);
+    const legacy = tools.filter(tool => !tool.name.startsWith('relay_'));
+    const canonical = tools.filter(tool => tool.name.startsWith('relay_'));
+    assert.equal(legacy.length, 37);
+    assert.deepEqual(tools, [...legacy, ...canonical]);
+    const schema = ({ description, name, ...contract }) => contract;
+    for (const tool of legacy) {
+      const renamed = canonical.find(candidate => candidate.name === 'relay_' + tool.name);
+      assert.ok(renamed, tool.name);
+      assert.deepEqual(schema(renamed), schema(tool), tool.name);
+    }
+    const names = legacy.map(tool => tool.name);
     for (const name of ['list_projects', 'read_lane', 'add_task', 'claim_task', 'review_task', 'claim_orchestrator',
       'read_changes', 'wait_changes', 'list_plans', 'create_plan', 'accept_plan', 'close_plan', 'get_guidance']) assert.ok(names.includes(name), name);
-    assert.deepEqual(tools.filter(tool => tool.annotations?.readOnlyHint === true).map(tool => tool.name).sort(),
+    assert.deepEqual(legacy.filter(tool => tool.annotations?.readOnlyHint === true).map(tool => tool.name).sort(),
       ['catch_up', 'get_guidance', 'get_plan', 'get_post', 'get_project_understanding', 'list_lanes', 'list_plans', 'list_projects', 'read_changes', 'read_lane', 'search_posts', 'suggest_related', 'wait_changes']);
-    const uris = (await client.listResources()).resources.map(resource => resource.uri).sort();
-    assert.deepEqual(uris, ['agent-mail://guidance/continuity', 'agent-mail://guidance/roles', 'agent-mail://guidance/start']);
-    for (const uri of uris) {
-      const [content] = (await client.readResource({ uri })).contents;
-      assert.equal(content.mimeType, 'text/markdown');
-      assert.match(content.text, /^# /);
-      const topic = uri.split('/').at(-1);
-      const guidance = await client.callTool({ name: 'get_guidance', arguments: { topic } });
-      assert.deepEqual(guidance.content, [{ type: 'text', text: content.text }]);
-      if (topic === 'start') {
-        const defaultGuidance = await client.callTool({ name: 'get_guidance', arguments: {} });
-        assert.deepEqual(defaultGuidance.content, guidance.content);
+    assert.deepEqual((await client.listResourceTemplates()).resourceTemplates.map(resource => resource.uriTemplate),
+      ['agent-mail://posts/{post}', 'relay://posts/{post}']);
+    const uris = (await client.listResources()).resources.map(resource => resource.uri);
+    for (const scheme of ['agent-mail', 'relay']) {
+      const prefix = scheme === 'relay' ? 'relay_' : '';
+      assert.deepEqual(uris.filter(uri => uri.startsWith(scheme + ':')).sort(),
+        ['continuity', 'roles', 'start'].map(topic => scheme + '://guidance/' + topic));
+      for (const uri of uris.filter(uri => uri.startsWith(scheme + ':'))) {
+        const [content] = (await client.readResource({ uri })).contents;
+        assert.equal(content.uri, uri);
+        assert.equal(content.mimeType, 'text/markdown');
+        assert.match(content.text, /^# /);
+        const topic = uri.split('/').at(-1);
+        const name = prefix + 'get_guidance';
+        const guidance = await client.callTool({ name, arguments: { topic } });
+        assert.deepEqual(guidance.content, [{ type: 'text', text: content.text }]);
+        if (topic === 'start') {
+          const defaultGuidance = await client.callTool({ name, arguments: {} });
+          assert.deepEqual(defaultGuidance.content, guidance.content);
+        }
       }
     }
     const { cursor } = await runtime.call('read_changes');

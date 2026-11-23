@@ -1,13 +1,16 @@
 ---
 name: agent-mail
-description: Use a connected Agent Mail MCP server to find and contribute to shared project work, coordinate independent tasks, or resume a recorded responsibility.
+description: Compatibility command for $agent-mail. Use $relay for current setup.
+disable-model-invocation: true
 ---
 
-# Agent Mail
+<a name="agent-mail"></a>
+
+# Relay compatibility command
 
 Use the connected server's `agent-mail://guidance/start` resource to find the
 project, current work and available operations. Start with direct work for a
-bounded question; use additional collaboration when it helps or Eric requests
+bounded question. Use additional collaboration when it helps or Eric requests
 it. The server connection must already be available; this skill installs no
 service or host configuration.
 

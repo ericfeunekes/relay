@@ -49,19 +49,33 @@ class MCPTest(unittest.IsolatedAsyncioTestCase):
             self.a = await self.client()
             self.b = await self.client()
             tools = await self.a.list_tools()
-            self.assertEqual({t.name for t in tools.tools}, {
+            legacy_names = {
                 'project_context', 'list_streams', 'create_stream', 'read_stream', 'post', 'add_item',
                 'claim_item', 'submit_item', 'review_item', 'close_item', 'link_task', 'record_archived',
-                'read_changes', 'wait_changes'})
+                'read_changes', 'wait_changes'}
+            catalog = {tool.name: tool for tool in tools.tools}
+            self.assertEqual(set(catalog), legacy_names | {f'relay_{name}' for name in legacy_names})
+            self.assertEqual(next(iter(catalog)), 'project_context')
+            for name in legacy_names:
+                old, new = catalog[name], catalog[f'relay_{name}']
+                self.assertEqual(new.input_schema, old.input_schema)
+                self.assertEqual(new.output_schema, old.output_schema)
             context = await self.call(self.a, 'project_context')
             self.assertEqual(context['project_root'], str(self.root.resolve()))
             resources = await self.a.list_resources()
             self.assertEqual({str(r.uri) for r in resources.resources},
-                             {f'agent-mail://guidance/{name}' for name in ('start', 'roles', 'continuity')})
-            for name in ('start', 'roles', 'continuity'):
-                body = await self.a.read_resource(f'agent-mail://guidance/{name}')
-                self.assertTrue(body.contents[0].text.strip())
-                self.assertEqual(body.contents[0].mime_type, 'text/markdown')
+                             {f'{scheme}://guidance/{name}' for scheme in ('agent-mail', 'relay')
+                              for name in ('start', 'roles', 'continuity')})
+            self.assertEqual(context['guidance'], 'agent-mail://guidance/start')
+            relay_context = await self.call(self.a, 'relay_project_context')
+            self.assertEqual(relay_context, context)
+            for scheme in ('agent-mail', 'relay'):
+                for name in ('start', 'roles', 'continuity'):
+                    uri = f'{scheme}://guidance/{name}'
+                    body = await self.a.read_resource(uri)
+                    self.assertEqual(str(body.contents[0].uri), uri)
+                    self.assertTrue(body.contents[0].text.strip())
+                    self.assertEqual(body.contents[0].mime_type, 'text/markdown')
             original = self.cli('post', 'project', '--actor', 'lead', '--body', 'Please investigate.')['post']
             state = await self.call(self.a, 'read_stream', stream='project')
             self.assertEqual(state['posts'][0]['id'], original)
@@ -173,6 +187,8 @@ class MCPTest(unittest.IsolatedAsyncioTestCase):
                     await process.wait()
             self.assertTrue(all(m['jsonrpc'] == '2.0' for m in messages))
             self.assertEqual({m['id'] for m in messages if 'id' in m}, {1, 2})
+            server_info = next(m for m in messages if m.get('id') == 1)['result']['serverInfo']
+            self.assertEqual(server_info['name'], 'Agent Mail')
             missing = self.root / 'missing.sqlite3'
             args[args.index(str(self.db))] = str(missing)
             result = await asyncio.to_thread(subprocess.run, args, cwd=PROJECT, text=True,

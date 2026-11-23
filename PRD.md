@@ -1,4 +1,6 @@
-# Agent Mail product requirements
+<a name="agent-mail-product-requirements"></a>
+
+# Relay product requirements
 
 This PRD holds requirements awaiting validation. See
 [Validated requirements](VALIDATED-REQUIREMENTS.md) for behavior already verified.
@@ -88,10 +90,10 @@ choices need him, with the supporting discussion and evidence available.
   - Eric links a checklist item to the post that prompted it. Participants can
     follow the link to the original entry in context after new posts arrive.
 
-- **R1.9** Agent Mail suggests closely related links when someone posts and
+- **R1.9** Relay suggests closely related links when someone posts and
   flags possible overlap when a channel is created. Suggestions use existing
   project text and links and incur no model or embedding charges.
-  - Eric creates a channel on a topic an existing channel covers. Agent Mail
+  - Eric creates a channel on a topic an existing channel covers. Relay
     shows the overlap and suggests reusing the existing channel or considering
     a merge. Eric can dismiss the suggestion and use both channels.
   - A post about an export fix surfaces a related project discussion and a

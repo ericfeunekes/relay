@@ -1,4 +1,4 @@
-import { McpServer, ResourceTemplate } from '@modelcontextprotocol/server';
+import { McpServer, ResourceTemplate, type CallToolResult } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 import type { StoreAPI } from './contracts';
 
@@ -13,17 +13,58 @@ const changeInput = {
   lanes: z.array(id).min(1).optional(),
 };
 
-export function createServer(store: StoreAPI): McpServer {
-  const server = new McpServer({ name: 'Agent Mail', version: '0.1.0' }, {
-    instructions: 'Read agent-mail://guidance/start before contributing. Clients without MCP resources can call get_guidance for the same instructions. Projects contain lanes with feeds, tasks and shared plans. Runtime continuation and deployment remain host actions.',
+type LinkScheme = 'agent-mail' | 'relay';
+
+function contentJSON(value: unknown, useRelayLinks: boolean) {
+  if (!useRelayLinks) return JSON.stringify(value);
+  return JSON.stringify(value, (key, entry) => {
+    // Only service-generated references change. Authored post, plan, and note text stays untouched.
+    if (key === 'reference' && typeof entry === 'string' && /^agent-mail:\/\/posts\/[1-9]\d*$/.test(entry)) {
+      return entry.replace('agent-mail:', 'relay:');
+    }
+    return entry;
   });
+}
+
+export function createServer(store: StoreAPI, primary: LinkScheme = 'agent-mail'): McpServer {
+  const isRelay = primary === 'relay';
+  const schemes: LinkScheme[] = isRelay ? ['relay', 'agent-mail'] : ['agent-mail', 'relay'];
+  const primaryTool = (name: string) => isRelay ? `relay_${name}` : name;
+  const server = new McpServer(isRelay
+    ? { name: 'relay', title: 'Relay', version: '0.1.0', description: 'Shared project context, plans and checklists for agents.' }
+    : { name: 'Agent Mail', version: '0.1.0' }, {
+    instructions: `Read ${primary}://guidance/start before contributing. Clients without MCP resources can call ${primaryTool('get_guidance')} for the same instructions. Projects contain lanes with feeds, tasks and shared plans. Runtime continuation and deployment remain host actions.`,
+  });
+  const operations = new Set<string>();
+  const registrations: ((scheme: LinkScheme) => void)[] = [];
+  function relayWording(value: string) {
+    return value.replace(/\b[a-z]+(?:_[a-z]+)+\b/g, word => operations.has(word) ? `relay_${word}` : word)
+      .replaceAll('Agent Mail', 'Relay').replaceAll('agent-mail://posts/', 'relay://posts/');
+  }
+  function registerOperation<Shape extends z.ZodRawShape>(
+    name: string, description: string, shape: Shape, annotations: typeof readOnly | undefined,
+    run: (args: z.output<z.ZodObject<Shape>>, useRelayLinks: boolean) => Promise<CallToolResult>,
+  ) {
+    operations.add(name);
+    const inputSchema = z.object(shape);
+    registrations.push(scheme => {
+      const relayName = scheme === 'relay';
+      const useRelayLinks = relayName && isRelay;
+      const compatibility = !relayName && isRelay;
+      const displayDescription = relayName ? relayWording(description) : description;
+      server.registerTool(relayName ? `relay_${name}` : name, {
+        description: compatibility ? `Compatibility alias for relay_${name}. ${displayDescription}` : displayDescription,
+        inputSchema, annotations,
+      }, args => run(args, useRelayLinks));
+    });
+  }
   function tool(name: string, description: string, shape: z.ZodRawShape, annotations?: typeof readOnly) {
-    server.registerTool(name, { description, inputSchema: z.object(shape), annotations }, async (args) => {
+    registerOperation(name, description, shape, annotations, async (args, useRelayLinks) => {
       try {
         const result = await store.call(name, args);
-        return { content: [{ type: 'text' as const, text: JSON.stringify(result) }] };
+        return { content: [{ type: 'text', text: contentJSON(result, useRelayLinks) }] };
       } catch (error) {
-        return { isError: true, content: [{ type: 'text' as const, text: error instanceof Error ? error.message : String(error) }] };
+        return { isError: true, content: [{ type: 'text', text: error instanceof Error ? error.message : String(error) }] };
       }
     });
   }
@@ -40,11 +81,6 @@ export function createServer(store: StoreAPI): McpServer {
   tool('get_post', 'Open an exact original post or reply by ID, with its author, date, channel and parent context. Canonical links use agent-mail://posts/<id>.', { post: id }, readOnly);
   tool('search_posts', 'Search original project posts and replies containing every query term (ASCII case-insensitive; other letters keep case); returns dated entries, parent context and exact links. Paginate older matches with next_before.', { project: id, query: text, ...pageInput }, readOnly);
   tool('suggest_related', 'Before posting or creating a channel, find related existing project discussions and links. Choose which links to include or whether to reuse a channel; dismiss by proceeding unchanged. Deterministic text matches only, no models/embeddings. Post candidates cover the latest 500 project posts; channel matches include names and 20 recent posts per channel.', { project: id, text, kind: z.enum(['post','channel']) }, readOnly);
-  server.registerResource('post', new ResourceTemplate('agent-mail://posts/{post}', { list: undefined }), { mimeType: 'application/json', description: 'An exact original post with reply context' }, async (uri, variables) => {
-    const post = Number(variables.post);
-    const result = await store.call('get_post', { post });
-    return { contents: [{ uri: uri.href, mimeType: 'application/json', text: JSON.stringify(result) }] };
-  });
   tool('post', 'Use suggest_related(kind=post) before publishing to choose any related links to include in body. Append a finding or reply; posts confer no new permissions.', { lane: id, actor, body: text, reply_to: id.optional() });
   tool('add_task', 'Add actionable agreed-scope work; optional ideas belong in the feed. source_post links the original motivating entry in this project.', { lane: id, title: text, actor, source_post: id.optional() });
   tool('claim_task', 'Claim open work; a conflicting claim preserves its owner.', { task: id, actor });
@@ -64,11 +100,10 @@ export function createServer(store: StoreAPI): McpServer {
   tool('handoff_orchestrator', 'Deliberately hand lane orchestration to a named successor.', { lane: id, actor, session: text, new_actor: text, new_runtime: text, new_session: text, reason: text });
   tool('reassign_orchestrator', 'Record deliberate workflow-authorized reassignment; actor labels are trusted attribution.', { lane: id, actor, new_actor: text, new_runtime: text, new_session: text, reason: text });
   tool('read_changes', 'Catch up on all work, one project, or followed lanes. Lane filters also discover new lanes in their projects. `waiting` includes current blocked work and question posts in scope. Start from a fresh snapshot when changing scope.', changeInput, readOnly);
-  server.registerTool('wait_changes', {
-    description: 'Wait at most 60 seconds for changes that match the chosen project or lanes. A timeout still returns the latest scan cursor. No model wake or scheduling.',
-    inputSchema: z.object({ ...changeInput, timeout: z.number().min(0).max(60).default(30) }),
-    annotations: readOnly,
-  }, async ({ after, timeout, ...scope }) => {
+  registerOperation('wait_changes',
+    'Wait at most 60 seconds for changes that match the chosen project or lanes. A timeout still returns the latest scan cursor. No model wake or scheduling.',
+    { ...changeInput, timeout: z.number().min(0).max(60).default(30) }, readOnly,
+    async ({ after, timeout, ...scope }, useRelayLinks) => {
     try {
       const deadline = Date.now() + timeout * 1000;
       let cursor = after;
@@ -76,7 +111,7 @@ export function createServer(store: StoreAPI): McpServer {
         const result = await store.call('read_changes', { after: cursor, ...scope }) as { cursor: number; events: unknown[] };
         const changed = result.events.length > 0;
         if (changed || Date.now() >= deadline) {
-          return { content: [{ type: 'text', text: JSON.stringify({ ...result, timed_out: !changed }) }] };
+          return { content: [{ type: 'text', text: contentJSON({ ...result, timed_out: !changed }, useRelayLinks) }] };
         }
         cursor = result.cursor;
         await new Promise(resolve => setTimeout(resolve, Math.min(100, Math.max(0, deadline - Date.now()))));
@@ -97,14 +132,32 @@ export function createServer(store: StoreAPI): McpServer {
     roles: '# Work in your recorded role\nFind the chosen workflow, scope, reviewer and finite checkpoint. Claim tasks before edits; submit evidence for assessment; when the workflow names a reviewer, do not accept your own submission. Plan acceptance is revision-specific and may be AI-only, human or mixed. Explicit orchestration claims identify runtime and session; copied context does not transfer ownership. Peers can manage delegated steps without a coordinator relay. Keep questions, dispositions and evidence in context.\n',
     continuity: '# Continue or finish truthfully\nUse read_changes and bounded wait_changes with a durable cursor; discover new lanes and read relevant plan revisions/comments. A quiet wait does not complete work. When work needs an answer, post the question, what it blocks, who must answer and how it resumes, then block_task; unblock_task with the answer. read_changes `waiting` shows what is still blocked. At a finite checkpoint leave pending work, owner and resumption condition visible. Shared updates never wake or resume models. Host actions require supported runtime tools. Finish required work and assessment before completion; chat archival is optional. No hosted deployment, OAuth client proof or migration is implied by this local implementation.\n',
   };
-  server.registerTool('get_guidance', {
-    description: 'Read Agent Mail guidance on getting started, assigned roles, or continuing and finishing work.',
-    inputSchema: z.object({ topic: z.enum(['start', 'roles', 'continuity']).default('start') }),
-    annotations: readOnly,
-  }, async ({ topic }) => ({ content: [{ type: 'text', text: guidance[topic] }] }));
-  for (const [name, body] of Object.entries(guidance)) {
-    const uri = `agent-mail://guidance/${name}`;
-    server.registerResource(name, uri, { mimeType: 'text/markdown', description: `Agent Mail ${name} guidance` }, async () => ({ contents: [{ uri, mimeType: 'text/markdown', text: body }] }));
+  registerOperation('get_guidance',
+    'Read Agent Mail guidance on getting started, assigned roles, or continuing and finishing work.',
+    { topic: z.enum(['start', 'roles', 'continuity']).default('start') }, readOnly,
+    async ({ topic }, useRelayLinks) => ({
+      content: [{ type: 'text', text: useRelayLinks ? relayWording(guidance[topic]) : guidance[topic] }],
+    }));
+  for (const scheme of schemes) {
+    for (const register of registrations) register(scheme);
+    const relayName = scheme === 'relay';
+    const useRelayLinks = relayName && isRelay;
+    server.registerResource(relayName ? 'relay_post' : 'post',
+      new ResourceTemplate(`${scheme}://posts/{post}`, { list: undefined }),
+      { mimeType: 'application/json', description: 'An exact original post with reply context' },
+      async (uri, variables) => {
+        const post = Number(variables.post);
+        const result = await store.call('get_post', { post });
+        return { contents: [{ uri: uri.href, mimeType: 'application/json', text: contentJSON(result, useRelayLinks) }] };
+      });
+    for (const [name, body] of Object.entries(guidance)) {
+      const uri = `${scheme}://guidance/${name}`;
+      server.registerResource(relayName ? `relay_${name}` : name, uri, {
+        mimeType: 'text/markdown', description: `${relayName ? 'Relay' : 'Agent Mail'} ${name} guidance`,
+      }, async () => ({
+        contents: [{ uri, mimeType: 'text/markdown', text: useRelayLinks ? relayWording(body) : body }],
+      }));
+    }
   }
   return server;
 }

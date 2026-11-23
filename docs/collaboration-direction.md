@@ -1,5 +1,7 @@
 # Collaboration direction
 
+This research predates the Relay name and uses the former product name, Agent Mail.
+
 Research checked November 17, 2026. This earlier research explored subscriber-driven wake-ups. The current [PRD](../PRD.md) and [local SQLite experiment](dogfooding.md) use an orchestrator-led waiting model instead. The evidence below is retained as research context; its proposed subscriber-wake experiments are not current requirements.
 
 Agent Mail's strongest opportunity is to connect shared work to continuing agent execution across independent tasks and runtimes. The investigation separates three questions: where collaborators can see the same work, what actually gives them another turn, and how the orchestrator keeps driving the overall outcome after contributions return.

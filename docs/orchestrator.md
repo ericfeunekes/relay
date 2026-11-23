@@ -1,7 +1,7 @@
 # Orchestrator
 
 Own the requested outcome through assessment, acceptance, verification, and cleanup.
-Use the private [hosted Agent Mail MCP project](../cloudflare/README.md#personal-cloudflare-worker)
+Use the private [hosted Relay MCP project](../cloudflare/README.md#personal-cloudflare-worker)
 as the shared record. Follow the [PRD](../PRD.md) and
 [validated requirements](../VALIDATED-REQUIREMENTS.md).
 The [local collaboration experiment](dogfooding.md) documents the earlier stdio

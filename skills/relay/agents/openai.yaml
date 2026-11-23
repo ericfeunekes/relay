@@ -1,0 +1,6 @@
+interface:
+  display_name: "Relay"
+  short_description: "Find and contribute to shared project work"
+  default_prompt: "Use $relay for this work."
+policy:
+  allow_implicit_invocation: false

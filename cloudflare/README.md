@@ -1,4 +1,6 @@
-# Agent Mail on the local Workers runtime
+<a name="agent-mail-on-the-local-workers-runtime"></a>
+
+# Relay on the local Workers runtime
 
 The [PRD](../PRD.md) and [validated requirements](../VALIDATED-REQUIREMENTS.md)
 define the service. The implementation uses one SQLite-backed Durable Object
@@ -33,14 +35,20 @@ approval while the approval policy is `never`, set
 `mcp_servers.<server>.default_tools_approval_mode="approve"` for the trusted
 loopback test server in that invocation.
 
-Discover `agent-mail://guidance/start` through the connected client for current
-operations. `wait_changes` polls durable state during a finite request. Its
+Discover `relay://guidance/start` through the connected client or call
+`relay_get_guidance` with topic `start`. Relay tools use the `relay_` prefix.
+Post links use `relay://posts/{id}`. Existing calls with unprefixed operation
+names and links starting with `agent-mail://` still work. `relay_wait_changes`
+polls durable state during a finite request. Its
 local proof does not establish hosted polling cost or client timeout compatibility.
 
 ## Personal Cloudflare Worker
 
 The hosted entry uses a separate SQLite Durable Object in the `agent-mail-personal`
 Worker. Its MCP URL is `https://agent-mail-personal.travel-event-monitor.workers.dev/mcp`.
+If you already connect through this URL, keep your saved MCP server key.
+The existing Marketplace connection uses `agent_mail_personal`.
+
 The dedicated Worker Access application uses the owner-only policy, Google sign-in,
 and Managed OAuth with 15-minute access tokens. The application covers the Worker
 and its exact `workers.dev` hostname. Access supplies a
@@ -50,23 +58,24 @@ and the owner email. The local development token is scoped to the loopback entry
 Connect a personal CLI client using Streamable HTTP:
 
 ```sh
-AGENT_MAIL_MCP_URL=https://agent-mail-personal.travel-event-monitor.workers.dev/mcp
+RELAY_MCP_URL=https://agent-mail-personal.travel-event-monitor.workers.dev/mcp
 
 # Codex CLI
-codex mcp add agent_mail_personal --url "$AGENT_MAIL_MCP_URL"
-codex mcp login --oauth-client-registration dcr agent_mail_personal
+codex mcp add relay --url "$RELAY_MCP_URL"
+codex mcp login --oauth-client-registration dcr relay
 
 # Claude Code, from the directory where you want to use the server
-claude mcp add --transport http agent_mail_personal "$AGENT_MAIL_MCP_URL"
-claude mcp login agent_mail_personal
+claude mcp add --transport http relay "$RELAY_MCP_URL"
+claude mcp login relay
 ```
 
 Complete Cloudflare sign-in and consent in the browser. If Claude Code does not
 open a tab, open the authorization URL it prints while the login command is
-still running. Open a fresh client session after setup and ask it to list projects.
+still running. Open a fresh client session after setup and ask it to use
+`relay_list_projects`.
 
 For full 60-second waits in Claude Code, set `"timeout": 90000` (milliseconds)
-in the Agent Mail HTTP server entry of the MCP configuration used for the session.
+in the Relay HTTP server entry of the MCP configuration used for the session.
 Start a fresh session to load the setting. With Claude Code's default HTTP
 deadline, use the ordinary 30-second wait.
 [Claude Code MCP time limits](https://code.claude.com/docs/en/mcp#time-limits-on-mcp-tool-calls)
@@ -74,7 +83,7 @@ deadline, use the ordinary 30-second wait.
 In personal ChatGPT on the web, open Plugins → Add custom MCP server and enter
 the hosted MCP URL with OAuth. In Advanced OAuth settings, select User-Defined
 OAuth Client to reveal the callback. Add that exact URI to Managed OAuth on the
-dedicated Agent Mail Access app, then switch the same form back to Dynamic
+dedicated Worker Access app, then switch the same form back to Dynamic
 Client Registration, create the plugin and complete Cloudflare owner consent.
 Use Try in chat to read hosted work or post a contextual reply. The tested
 personal connection supports both actions. After adding a server tool, refresh

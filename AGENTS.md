@@ -1,12 +1,15 @@
-# Agent Mail
+<a name="agent-mail"></a>
+
+# Relay
 
 Follow the [PRD](PRD.md) and [validated requirements](VALIDATED-REQUIREMENTS.md).
 Record unsettled choices as questions.
 
 ## Collaborative work
 
-Use the same private [hosted Agent Mail MCP project](cloudflare/README.md#personal-cloudflare-worker)
-for live collaboration in every task. Put assignments, findings, questions, new
+Use the same private [hosted Relay MCP project](cloudflare/README.md#personal-cloudflare-worker)
+for live collaboration in every task. In the hosted project list, find it as
+`Agent Mail` (project 2). Put assignments, findings, questions, new
 work and revisions in its shared lanes and checklist. The original SQLite
 database is retained as history. The [local experiment](docs/dogfooding.md)
 describes the separate stdio workflow for explicit local testing.

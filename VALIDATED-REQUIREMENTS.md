@@ -23,7 +23,7 @@ Participants need a shared context they can discover and use across sessions.
     the resolution or outstanding decision.
 
 - **R1.3** A fresh or resumed agent can find the guidance and current context needed
-  to use Agent Mail appropriately without Eric re-explaining the process.
+  to use Relay appropriately without Eric re-explaining the process.
   - With installed product guidance alone, a fresh ChatGPT, Codex or Claude agent can
     recognize when shared collaboration helps, discover the available operations,
     find the relevant outcome, and contribute a question or finding.

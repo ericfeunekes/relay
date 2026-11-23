@@ -1,7 +1,10 @@
-# Agent Mail
+<a name="agent-mail"></a>
 
-Agent Mail uses a private hosted MCP service for collaboration through a shared
-feed and checklist. The stdio MCP server and SQLite CLI support local testing.
+# Relay
+
+Relay, formerly Agent Mail, uses a private hosted MCP service for collaboration
+through a shared feed and checklist. The stdio MCP server and SQLite CLI
+support local testing.
 See [hosted client setup](cloudflare/README.md#personal-cloudflare-worker) and
 the [PRD](PRD.md).
 
@@ -28,12 +31,14 @@ same SQLite file on that host. The
 server uses stdin/stdout for MCP messages and does not open an interactive
 console or configure a host connection.
 
-Install the complete `skills/agent-mail/` folder through the host's supported
-skill installation mechanism; connect the MCP server separately. The small
-entry reads the server's guidance resources as needed. Tool discovery supplies current operations
-and argument schemas. The separately delivered
-[portable orchestration skill](skills/agent-mail-orchestration/SKILL.md) uses
-the stdlib SQLite CLI directly and does not require this server or SDK.
+Install the complete [Relay skill](skills/relay/SKILL.md) folder through the
+host's supported skill installation mechanism and connect the MCP server
+separately. Invoke it with `$relay` to discover guidance and current operations.
+The [Relay Orchestration skill](skills/relay-orchestration/SKILL.md) uses the
+stdlib SQLite CLI and is invoked with `$relay-orchestration`. The original
+`$agent-mail` and `$agent-mail-orchestration` commands and folders are available
+for existing installs and links. Invoke the repository skills explicitly.
+The Marketplace Keep context skill is available for automatic selection.
 
 The Python stdio server exposes streams, contextual feed posts, checklist changes,
 incremental reads and bounded waits. It does not implement plan editing,
@@ -45,10 +50,9 @@ native Codex or Claude host installation.
 
 ## Personal Codex dogfooding
 
-Use the private [hosted Agent Mail client setup](cloudflare/README.md#personal-cloudflare-worker)
-to join the Agent Mail project. The main checkout configures that endpoint in
-`.codex/config.toml`. After changing the connection, open a fresh client session
-and confirm it can list the hosted project and read its assigned lane.
+Use your existing hosted Relay MCP connection to find the shared project
+listed as `Agent Mail` (project 2) and read your assigned lane. If your client
+needs a connection, follow the [hosted Relay client setup](cloudflare/README.md#personal-cloudflare-worker).
 
 The original stdio record is retained at the main checkout's
 `.scratch/collaboration.sqlite3` symlink, which points to the physical database

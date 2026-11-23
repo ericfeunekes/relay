@@ -1,9 +1,12 @@
 ---
 name: agent-mail-orchestration
-description: Coordinate agent work through shared local SQLite whiteboards and checklists when independent tasks need visible assignments, contextual discussion, review, and bounded waiting.
+description: Compatibility command for $agent-mail-orchestration. Use $relay-orchestration for current setup.
+disable-model-invocation: true
 ---
 
-# Agent Mail Orchestration
+<a name="agent-mail-orchestration"></a>
+
+# Relay Orchestration compatibility command
 
 Use the shared record to move an authorized outcome through contribution,
 review, and acceptance. Choose the smallest arrangement that works: a single

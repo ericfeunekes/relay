@@ -1,8 +1,8 @@
 # Development setup
 
-Agent Mail uses the current development skills from the private
+Relay uses the current development skills from the private
 [`ericfeunekes/ai-marketplace`](https://github.com/ericfeunekes/ai-marketplace)
-repository. The shared repository is the authoring source; Agent Mail does not
+repository. The shared repository is the authoring source. Relay does not
 pin or commit imported skill versions.
 
 ## Local setup
@@ -24,14 +24,15 @@ The lead agent refreshes before development work in each new or resumed chat.
 Each refresh uses the source's latest published `main`; already-running agents
 may have previously loaded instructions and should finish their current work
 before loading a changed workflow. Update skills in the shared source, then
-commit and push there. Never edit the generated checkout in Agent Mail.
+commit and push there. Never edit the generated checkout in Relay.
 
 ## Codex Cloud setup
 
 In Settings > Codex Cloud > Environments, create an environment for
-`ericfeunekes/agent-mail`. Enable **Allow Codex to access internet**, choose
-**Custom domains only**, and allow `github.com`. Git must be able to read the private
-`ericfeunekes/ai-marketplace` repository. Selecting the public Agent Mail
+the [Relay repository](https://github.com/ericfeunekes/relay). Enable
+**Allow Codex to access internet**, choose **Custom domains only**, and allow
+`github.com`. Git must be able to read the private
+`ericfeunekes/ai-marketplace` repository. Selecting the public Relay
 repository alone does not establish access to that second repository.
 
 Use the environment's supported GitHub access configuration. If Git needs a
