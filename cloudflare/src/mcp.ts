@@ -26,7 +26,7 @@ function contentJSON(value: unknown, useRelayLinks: boolean) {
   });
 }
 
-export function createServer(store: StoreAPI, primary: LinkScheme = 'agent-mail'): McpServer {
+export function createServer(store: StoreAPI, primary: LinkScheme = 'relay'): McpServer {
   const isRelay = primary === 'relay';
   const schemes: LinkScheme[] = isRelay ? ['relay', 'agent-mail'] : ['agent-mail', 'relay'];
   const primaryTool = (name: string) => isRelay ? `relay_${name}` : name;

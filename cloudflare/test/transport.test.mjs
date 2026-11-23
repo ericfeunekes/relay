@@ -28,12 +28,13 @@ test('HTTP/MCP transport boundary', { timeout: 240000 }, async t => {
 
   await t.test('tools and guidance resources are discoverable and readable', async () => {
     const client = await runtime.connect('discoverer');
-    assert.equal(client.getServerVersion().name, 'Agent Mail');
+    assert.equal(client.getServerVersion().name, 'relay');
+    assert.equal(client.getServerVersion().title, 'Relay');
     const tools = (await client.listTools()).tools;
     const legacy = tools.filter(tool => !tool.name.startsWith('relay_'));
     const canonical = tools.filter(tool => tool.name.startsWith('relay_'));
     assert.equal(legacy.length, 37);
-    assert.deepEqual(tools, [...legacy, ...canonical]);
+    assert.deepEqual(tools, [...canonical, ...legacy]);
     const schema = ({ description, name, ...contract }) => contract;
     for (const tool of legacy) {
       const renamed = canonical.find(candidate => candidate.name === 'relay_' + tool.name);
@@ -46,7 +47,7 @@ test('HTTP/MCP transport boundary', { timeout: 240000 }, async t => {
     assert.deepEqual(legacy.filter(tool => tool.annotations?.readOnlyHint === true).map(tool => tool.name).sort(),
       ['catch_up', 'get_guidance', 'get_plan', 'get_post', 'get_project_understanding', 'list_lanes', 'list_plans', 'list_projects', 'read_changes', 'read_lane', 'search_posts', 'suggest_related', 'wait_changes']);
     assert.deepEqual((await client.listResourceTemplates()).resourceTemplates.map(resource => resource.uriTemplate),
-      ['agent-mail://posts/{post}', 'relay://posts/{post}']);
+      ['relay://posts/{post}', 'agent-mail://posts/{post}']);
     const uris = (await client.listResources()).resources.map(resource => resource.uri);
     for (const scheme of ['agent-mail', 'relay']) {
       const prefix = scheme === 'relay' ? 'relay_' : '';

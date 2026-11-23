@@ -22,7 +22,7 @@ def call_store(function, *args, **kwargs):
 
 
 def create_server(
-    db: Path, project_root: Path, *, primary: Literal["agent-mail", "relay"] = "agent-mail"
+    db: Path, project_root: Path, *, primary: Literal["agent-mail", "relay"] = "relay"
 ) -> MCPServer:
     if not db.is_absolute() or not project_root.is_absolute():
         raise ValueError("database and project root must be absolute paths")

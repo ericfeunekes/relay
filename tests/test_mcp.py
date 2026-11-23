@@ -55,7 +55,7 @@ class MCPTest(unittest.IsolatedAsyncioTestCase):
                 'read_changes', 'wait_changes'}
             catalog = {tool.name: tool for tool in tools.tools}
             self.assertEqual(set(catalog), legacy_names | {f'relay_{name}' for name in legacy_names})
-            self.assertEqual(next(iter(catalog)), 'project_context')
+            self.assertEqual(next(iter(catalog)), 'relay_project_context')
             for name in legacy_names:
                 old, new = catalog[name], catalog[f'relay_{name}']
                 self.assertEqual(new.input_schema, old.input_schema)
@@ -68,7 +68,7 @@ class MCPTest(unittest.IsolatedAsyncioTestCase):
                               for name in ('start', 'roles', 'continuity')})
             self.assertEqual(context['guidance'], 'agent-mail://guidance/start')
             relay_context = await self.call(self.a, 'relay_project_context')
-            self.assertEqual(relay_context, context)
+            self.assertEqual(relay_context, {**context, 'guidance': 'relay://guidance/start'})
             for scheme in ('agent-mail', 'relay'):
                 for name in ('start', 'roles', 'continuity'):
                     uri = f'{scheme}://guidance/{name}'
@@ -188,7 +188,8 @@ class MCPTest(unittest.IsolatedAsyncioTestCase):
             self.assertTrue(all(m['jsonrpc'] == '2.0' for m in messages))
             self.assertEqual({m['id'] for m in messages if 'id' in m}, {1, 2})
             server_info = next(m for m in messages if m.get('id') == 1)['result']['serverInfo']
-            self.assertEqual(server_info['name'], 'Agent Mail')
+            self.assertEqual(server_info['name'], 'relay')
+            self.assertEqual(server_info['title'], 'Relay')
             missing = self.root / 'missing.sqlite3'
             args[args.index(str(self.db))] = str(missing)
             result = await asyncio.to_thread(subprocess.run, args, cwd=PROJECT, text=True,
